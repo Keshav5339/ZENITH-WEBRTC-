@@ -9,7 +9,18 @@ export const useSocket = () => {
 };
 
 export const SocketProvider = (props) => {
-  const socket = useMemo(() => io("localhost:8000"), []);
+  const socket = useMemo(() => {
+    // Use environment variable for socket URL
+    // In production, set REACT_APP_SOCKET_URL in your environment
+    const socketUrl = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
+    
+    return io(socketUrl, {
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 5,
+    });
+  }, []);
 
   return (
     <SocketContext.Provider value={socket}>

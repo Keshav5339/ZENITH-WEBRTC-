@@ -1,7 +1,8 @@
-import React, { useEffect, useCallback, useState } from "react";
+import React, { useEffect, useCallback, useState, useRef } from "react";
 import ReactPlayer from "react-player";
 import peer from "../service/peer";
 import { useSocket } from "../context/SocketProvider";
+import Chat from "../components/Chat";
 import "./Room.css";
 
 const RoomPage = () => {
@@ -13,41 +14,73 @@ const RoomPage = () => {
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [callStarted, setCallStarted] = useState(false);
-  // cont [ call start < set ]
+  const [error, setError] = useState(null);
+  const [connectionState, setConnectionState] = useState("new");
+  const [myEmail, setMyEmail] = useState("");
+  
+  // Store original video track for screen share toggle
+  const originalVideoTrackRef = useRef(null);
 
   const handleUserJoined = useCallback(({ email, id }) => {
     console.log(`Email ${email} joined room`);
     setRemoteSocketId(id);
+    setMyEmail(email); // Store my email for chat
   }, []);
 
   const handleCallUser = useCallback(async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: true,
-    });
-    const offer = await peer.getOffer();
-    socket.emit("user:call", { to: remoteSocketId, offer });
-    setMyStream(stream);
-    setCallStarted(true);
-  }, [remoteSocketId, socket]);
-
-  const handleIncommingCall = useCallback(
-    async ({ from, offer }) => {
-      setRemoteSocketId(from);
+    try {
+      setError(null);
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
         video: true,
       });
+      
+      // Store original video track
+      originalVideoTrackRef.current = stream.getVideoTracks()[0];
+      
+      const offer = await peer.getOffer();
+      socket.emit("user:call", { to: remoteSocketId, offer });
       setMyStream(stream);
-      console.log(`Incoming Call`, from, offer);
-      const ans = await peer.getAnswer(offer);
-      socket.emit("call:accepted", { to: from, ans });
       setCallStarted(true);
+    } catch (err) {
+      console.error("Error starting call:", err);
+      setError(err.name === "NotAllowedError" 
+        ? "Camera/microphone access denied. Please allow permissions." 
+        : "Failed to access camera/microphone.");
+    }
+  }, [remoteSocketId, socket]);
+
+  const handleIncommingCall = useCallback(
+    async ({ from, offer }) => {
+      try {
+        setError(null);
+        setRemoteSocketId(from);
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: true,
+        });
+        
+        // Store original video track
+        originalVideoTrackRef.current = stream.getVideoTracks()[0];
+        
+        setMyStream(stream);
+        console.log(`Incoming Call`, from, offer);
+        const ans = await peer.getAnswer(offer);
+        socket.emit("call:accepted", { to: from, ans });
+        setCallStarted(true);
+      } catch (err) {
+        console.error("Error accepting call:", err);
+        setError(err.name === "NotAllowedError" 
+          ? "Camera/microphone access denied. Please allow permissions." 
+          : "Failed to access camera/microphone.");
+      }
     },
     [socket]
   );
 
   const sendStreams = useCallback(() => {
+    if (!myStream) return;
+    
     for (const track of myStream.getTracks()) {
       peer.peer.addTrack(track, myStream);
     }
@@ -84,6 +117,31 @@ const RoomPage = () => {
 
   const handleNegoNeedFinal = useCallback(async ({ ans }) => {
     await peer.setLocalDescription(ans);
+  }, []);
+
+  // Monitor connection state
+  useEffect(() => {
+    const handleConnectionStateChange = () => {
+      const state = peer.getConnectionState();
+      setConnectionState(state);
+      console.log("Connection state:", state);
+      
+      if (state === "failed" || state === "disconnected") {
+        setError("Connection lost. Please refresh the page.");
+      }
+    };
+
+    if (peer.peer) {
+      peer.peer.addEventListener("connectionstatechange", handleConnectionStateChange);
+      peer.peer.addEventListener("iceconnectionstatechange", handleConnectionStateChange);
+    }
+
+    return () => {
+      if (peer.peer) {
+        peer.peer.removeEventListener("connectionstatechange", handleConnectionStateChange);
+        peer.peer.removeEventListener("iceconnectionstatechange", handleConnectionStateChange);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -149,7 +207,7 @@ const RoomPage = () => {
     }
   };
 
-  // Screen Share
+  // Screen Share - FIXED VERSION
   const toggleScreenShare = async () => {
     if (!isScreenSharing) {
       try {
@@ -160,50 +218,78 @@ const RoomPage = () => {
         const screenTrack = screenStream.getVideoTracks()[0];
         const sender = peer.peer
           .getSenders()
-          .find((s) => s.track.kind === "video");
+          .find((s) => s.track && s.track.kind === "video");
         
         if (sender) {
-          sender.replaceTrack(screenTrack);
+          // Store current video track before replacing
+          const currentVideoTrack = myStream.getVideoTracks()[0];
+          if (currentVideoTrack && !originalVideoTrackRef.current) {
+            originalVideoTrackRef.current = currentVideoTrack;
+          }
+          
+          await sender.replaceTrack(screenTrack);
         }
         
         setIsScreenSharing(true);
         
-        screenTrack.onended = () => {
-          const videoTrack = myStream.getVideoTracks()[0];
-          sender.replaceTrack(videoTrack);
+        // Handle screen share stop
+        screenTrack.onended = async () => {
+          if (originalVideoTrackRef.current) {
+            const sender = peer.peer
+              .getSenders()
+              .find((s) => s.track && s.track.kind === "video");
+            if (sender) {
+              await sender.replaceTrack(originalVideoTrackRef.current);
+            }
+          }
           setIsScreenSharing(false);
         };
       } catch (error) {
         console.error("Error sharing screen:", error);
+        setError("Failed to share screen. Please try again.");
       }
     } else {
-      const videoTrack = myStream.getVideoTracks()[0];
-      const sender = peer.peer
-        .getSenders()
-        .find((s) => s.track.kind === "video");
-      if (sender) {
-        sender.replaceTrack(videoTrack);
+      // Stop screen sharing manually
+      if (originalVideoTrackRef.current) {
+        const sender = peer.peer
+          .getSenders()
+          .find((s) => s.track && s.track.kind === "video");
+        if (sender) {
+          await sender.replaceTrack(originalVideoTrackRef.current);
+        }
       }
       setIsScreenSharing(false);
     }
   };
 
-  // End Call
+  // End Call - IMPROVED CLEANUP
   const endCall = () => {
+    // Stop all tracks
     if (myStream) {
       myStream.getTracks().forEach((track) => track.stop());
     }
+    
+    // Close peer connection
     if (peer.peer) {
-      peer.peer.close();
+      peer.closePeer();
     }
+    
+    // Clear refs
+    originalVideoTrackRef.current = null;
+    
+    // Redirect to lobby
     window.location.href = "/";
   };
 
   // Copy Room Link
   const copyRoomLink = () => {
     const roomLink = window.location.href;
-    navigator.clipboard.writeText(roomLink);
-    alert("Room link copied to clipboard!");
+    navigator.clipboard.writeText(roomLink).then(() => {
+      alert("Room link copied to clipboard!");
+    }).catch((err) => {
+      console.error("Failed to copy:", err);
+      alert("Failed to copy link. Please copy manually from address bar.");
+    });
   };
 
   return (
@@ -226,6 +312,25 @@ const RoomPage = () => {
           Copy Link
         </button>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div style={{
+          position: 'absolute',
+          top: '80px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(239, 68, 68, 0.9)',
+          color: 'white',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          zIndex: 1000,
+          maxWidth: '80%',
+          textAlign: 'center'
+        }}>
+          {error}
+        </div>
+      )}
 
       {/* Video Grid */}
       <div className="video-grid">
@@ -254,7 +359,9 @@ const RoomPage = () => {
               url={myStream}
               className="video-player"
             />
-            <div className="video-label">You {isVideoOff && "(Camera Off)"}</div>
+            <div className="video-label">
+              You {isVideoOff && "(Camera Off)"} {isScreenSharing && "(Sharing Screen)"}
+            </div>
           </div>
         )}
 
@@ -339,6 +446,9 @@ const RoomPage = () => {
           )}
         </div>
       </div>
+
+      {/* Chat Component */}
+      <Chat socket={socket} remoteSocketId={remoteSocketId} myEmail={myEmail} />
     </div>
   );
 };
