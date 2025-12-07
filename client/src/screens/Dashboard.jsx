@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import MeetingsPage from "./Meetings";
+import AnalyticsPage from "./Analytics";
 import "./Dashboard.css";
 
 const Dashboard = () => {
@@ -349,7 +351,9 @@ const Dashboard = () => {
         {/* Page Content */}
         <div className="page-content">
           {activeTab === 'overview' && renderOverview()}
-          {activeTab !== 'overview' && (
+          {activeTab === 'meetings' && <MeetingsPage />}
+          {activeTab === 'analytics' && <AnalyticsPage />}
+          {activeTab !== 'overview' && activeTab !== 'meetings' && activeTab !== 'analytics' && (
             <div className="placeholder-content">
               <h2>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Page</h2>
               <p>Coming soon...</p>
