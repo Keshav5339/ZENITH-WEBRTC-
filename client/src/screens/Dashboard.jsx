@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MeetingsPage from "./Meetings";
 import AnalyticsPage from "./Analytics";
+import IntegrationsPage from "./Integrations";
 import "./Dashboard.css";
 
 const Dashboard = () => {
@@ -353,7 +354,8 @@ const Dashboard = () => {
           {activeTab === 'overview' && renderOverview()}
           {activeTab === 'meetings' && <MeetingsPage />}
           {activeTab === 'analytics' && <AnalyticsPage />}
-          {activeTab !== 'overview' && activeTab !== 'meetings' && activeTab !== 'analytics' && (
+          {activeTab === 'integrations' && <IntegrationsPage />}
+          {activeTab !== 'overview' && activeTab !== 'meetings' && activeTab !== 'analytics' && activeTab !== 'integrations' && (
             <div className="placeholder-content">
               <h2>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Page</h2>
               <p>Coming soon...</p>
