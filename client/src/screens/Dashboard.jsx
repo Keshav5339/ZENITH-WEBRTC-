@@ -1,8 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import MeetingsPage from "./Meetings";
 import AnalyticsPage from "./Analytics";
 import IntegrationsPage from "./Integrations";
+import TeamsPage from "./Teams";
+import NotificationsPage from "./Notifications";
+import SupportPage from "./Support";
 import "./Dashboard.css";
 
 const Dashboard = () => {
@@ -10,6 +13,40 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [showStartMeetingModal, setShowStartMeetingModal] = useState(false);
   const [roomCode, setRoomCode] = useState("");
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  // Load theme preference
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("zenith_theme");
+    if (savedTheme) {
+      setIsDarkMode(savedTheme === "dark");
+    }
+  }, []);
+
+  // Apply theme
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.remove("light-mode");
+    } else {
+      document.documentElement.classList.add("light-mode");
+    }
+    localStorage.setItem("zenith_theme", isDarkMode ? "dark" : "light");
+  }, [isDarkMode]);
+
+  // Toggle theme
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
+  // Handle sign out
+  const handleSignOut = () => {
+    if (window.confirm("Are you sure you want to sign out?")) {
+      // Clear any stored data if needed
+      alert("Signed out successfully!");
+      window.location.href = "/";
+    }
+  };
 
   // Dummy data
   const stats = {
@@ -326,10 +363,16 @@ const Dashboard = () => {
               </svg>
             </button>
 
-            <button className="icon-btn">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
+            <button className="icon-btn" onClick={toggleTheme} title={isDarkMode ? "Light Mode" : "Dark Mode"}>
+              {isDarkMode ? (
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
             </button>
 
             <button className="icon-btn notif-btn">
@@ -339,13 +382,43 @@ const Dashboard = () => {
               <span className="notif-badge">3</span>
             </button>
 
-            <button className="user-btn">
-              <span className="user-avatar">KE</span>
-              <span className="user-name">keshavagarwal9335</span>
-              <svg className="dropdown-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+            <div className="user-menu-container">
+              <button className="user-btn" onClick={() => setShowUserMenu(!showUserMenu)}>
+                <span className="user-avatar">KE</span>
+                <span className="user-name">keshavagarwal9335</span>
+                <svg className="dropdown-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {showUserMenu && (
+                <div className="user-dropdown">
+                  <div className="user-dropdown-header">
+                    <div className="dropdown-avatar">KE</div>
+                    <div className="dropdown-user-info">
+                      <div className="dropdown-username">keshavagarwal9335</div>
+                      <div className="dropdown-email">keshavagarwal9335@gmail.com</div>
+                    </div>
+                  </div>
+                  <div className="dropdown-divider"></div>
+                  <button className="dropdown-item" onClick={() => {
+                    setShowUserMenu(false);
+                    alert("Profile & Settings page coming soon!");
+                  }}>
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Profile & Settings
+                  </button>
+                  <button className="dropdown-item danger" onClick={handleSignOut}>
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -355,9 +428,18 @@ const Dashboard = () => {
           {activeTab === 'meetings' && <MeetingsPage />}
           {activeTab === 'analytics' && <AnalyticsPage />}
           {activeTab === 'integrations' && <IntegrationsPage />}
-          {activeTab !== 'overview' && activeTab !== 'meetings' && activeTab !== 'analytics' && activeTab !== 'integrations' && (
+          {activeTab === 'teams' && <TeamsPage />}
+          {activeTab === 'notifications' && <NotificationsPage />}
+          {activeTab === 'support' && <SupportPage />}
+          {activeTab !== 'overview' && activeTab !== 'meetings' && activeTab !== 'analytics' && activeTab !== 'integrations' && activeTab !== 'teams' && activeTab !== 'notifications' && activeTab !== 'support' && activeTab !== 'automation' && (
             <div className="placeholder-content">
               <h2>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Page</h2>
+              <p>Coming soon...</p>
+            </div>
+          )}
+          {activeTab === 'automation' && (
+            <div className="placeholder-content">
+              <h2>Automation</h2>
               <p>Coming soon...</p>
             </div>
           )}
