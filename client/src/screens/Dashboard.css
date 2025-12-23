@@ -268,6 +268,9 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   gap: 20px;
   flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 1000; /* Higher z-index for header */
 }
 
 .header-left {
@@ -291,6 +294,8 @@
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  position: relative;
+  z-index: 1001; /* Higher than page content, lower than dropdown */
 }
 
 .search-container {
@@ -430,6 +435,7 @@
 /* User Dropdown Menu */
 .user-menu-container {
   position: relative;
+  z-index: 10000; /* Very high z-index to appear above everything */
 }
 
 .user-dropdown {
@@ -442,7 +448,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-  z-index: 1000;
+  z-index: 99999; /* Extremely high z-index to be on top */
   animation: slideDown 0.2s ease;
 }
 
@@ -546,6 +552,8 @@
   flex: 1;
   padding: 30px 40px;
   overflow-y: auto;
+  position: relative;
+  z-index: 1; /* Low z-index so dropdown appears above */
 }
 
 /* Overview Content */
