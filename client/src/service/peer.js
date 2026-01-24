@@ -14,7 +14,7 @@ class PeerService {
           // {
           //   urls: "turn:your-turn-server.com:3478",
           //   username: "username",
-          //   credential: "password"
+          //   credential: "passworrd"
           // }
         ],
       });
