@@ -92,16 +92,51 @@ const NotificationsPage = () => {
 
   // Load notifications
   useEffect(() => {
-    const savedNotifications = localStorage.getItem("zenith_notifications");
-    if (savedNotifications) {
-      const parsed = JSON.parse(savedNotifications);
-      // Convert timestamp strings back to Date objects
-      const withDates = parsed.map(n => ({
-        ...n,
-        timestamp: new Date(n.timestamp)
-      }));
-      setNotifications(withDates);
-    } else {
+    try {
+      const savedNotifications = localStorage.getItem("zenith_notifications");
+      if (savedNotifications) {
+        const parsed = JSON.parse(savedNotifications);
+        // Convert timestamp strings back to Date objects with validation
+        const withDates = parsed.map(n => {
+          let date;
+          if (n.timestamp instanceof Date) {
+            // If it's already a Date object (shouldn't happen, but handle it)
+            date = n.timestamp;
+          } else if (typeof n.timestamp === 'string') {
+            // Parse string to Date
+            date = new Date(n.timestamp);
+            // Validate the date
+            if (isNaN(date.getTime())) {
+              // If invalid, use current date as fallback
+              console.warn('Invalid date found in notification, using current date');
+              date = new Date();
+            }
+          } else if (typeof n.timestamp === 'number') {
+            // If it's a timestamp number
+            date = new Date(n.timestamp);
+          } else {
+            // Fallback to current date
+            date = new Date();
+          }
+          
+          return {
+            ...n,
+            timestamp: date
+          };
+        });
+        setNotifications(withDates);
+      } else {
+        setNotifications(allNotifications);
+        saveNotifications(allNotifications);
+      }
+    } catch (error) {
+      console.error('Error loading notifications from localStorage:', error);
+      // If there's an error, use default notifications and clear corrupted data
+      try {
+        localStorage.removeItem("zenith_notifications");
+      } catch (e) {
+        console.error('Error clearing localStorage:', e);
+      }
       setNotifications(allNotifications);
       saveNotifications(allNotifications);
     }
@@ -109,49 +144,100 @@ const NotificationsPage = () => {
 
   // Save notifications
   const saveNotifications = (notifs) => {
-    localStorage.setItem("zenith_notifications", JSON.stringify(notifs));
-    setNotifications(notifs);
+    try {
+      // Convert Date objects to ISO strings for proper serialization
+      const serializable = notifs.map(n => ({
+        ...n,
+        timestamp: n.timestamp instanceof Date 
+          ? n.timestamp.toISOString() 
+          : (typeof n.timestamp === 'string' 
+            ? n.timestamp 
+            : new Date(n.timestamp).toISOString())
+      }));
+      localStorage.setItem("zenith_notifications", JSON.stringify(serializable));
+      setNotifications(notifs);
+    } catch (error) {
+      console.error('Error saving notifications to localStorage:', error);
+      // Still update state even if localStorage fails
+      setNotifications(notifs);
+    }
   };
 
   // Mark as read
   const markAsRead = (id) => {
-    const updated = notifications.map(n =>
-      n.id === id ? { ...n, read: true } : n
-    );
-    saveNotifications(updated);
+    try {
+      const updated = notifications.map(n =>
+        n.id === id ? { ...n, read: true } : n
+      );
+      saveNotifications(updated);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
 
   // Mark all as read
   const markAllAsRead = () => {
-    const updated = notifications.map(n => ({ ...n, read: true }));
-    saveNotifications(updated);
+    try {
+      const updated = notifications.map(n => ({ ...n, read: true }));
+      saveNotifications(updated);
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
   };
 
   // Dismiss notification
   const dismissNotification = (id) => {
-    const updated = notifications.filter(n => n.id !== id);
-    saveNotifications(updated);
+    try {
+      const updated = notifications.filter(n => n.id !== id);
+      saveNotifications(updated);
+    } catch (error) {
+      console.error('Error dismissing notification:', error);
+    }
   };
 
   // Clear all
   const clearAll = () => {
-    if (window.confirm("Are you sure you want to clear all notifications?")) {
-      saveNotifications([]);
+    try {
+      if (window.confirm("Are you sure you want to clear all notifications?")) {
+        saveNotifications([]);
+      }
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+      alert('Failed to clear notifications. Please try again.');
     }
   };
 
   // Format timestamp
   const formatTimestamp = (date) => {
-    const now = new Date();
-    const diff = now - date;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
+    try {
+      // Ensure date is a valid Date object
+      const dateObj = date instanceof Date ? date : new Date(date);
+      
+      // Check if date is valid
+      if (isNaN(dateObj.getTime())) {
+        return "Recently";
+      }
+      
+      const now = new Date();
+      const diff = now - dateObj;
+      
+      // Handle negative differences (future dates)
+      if (diff < 0) {
+        return "Just now";
+      }
+      
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(diff / 3600000);
+      const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return "Just now";
-    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    return `${days} day${days > 1 ? 's' : ''} ago`;
+      if (minutes < 1) return "Just now";
+      if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+      if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+      return `${days} day${days > 1 ? 's' : ''} ago`;
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      return "Recently";
+    }
   };
 
   // Filter notifications
