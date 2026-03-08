@@ -194,8 +194,11 @@ const PreviewPage = () => {
       return;
     }
 
+    // Save display name so Room and Chat show correct "my" name
+    localStorage.setItem("zenith_user_email", userName.trim());
+
     // Emit room:join with name as email
-    socket.emit("room:join", { email: userName, room: roomCode });
+    socket.emit("room:join", { email: userName.trim(), room: roomCode });
   };
 
   return (

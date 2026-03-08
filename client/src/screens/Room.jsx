@@ -67,7 +67,8 @@ const RoomPage = () => {
     } else {
       // Auto-admit if not using admission flow (for now, auto-admit)
       setRemoteSocketId(id);
-      setMyEmail(email);
+      // Treat this joined user as the remote participant for labels/chat
+      setRemoteDisplayName((current) => current || email);
     }
   }, [isHost, socket]);
 
@@ -76,7 +77,7 @@ const RoomPage = () => {
     setPendingAdmissions(prev => prev.filter(p => p.id !== participantId));
     setParticipants(prev => [...prev, { id: participantId, email: participantEmail, isHost: false }]);
     setRemoteSocketId(participantId);
-    setMyEmail(participantEmail);
+    setRemoteDisplayName((current) => current || participantEmail);
   }, []);
 
   // Deny a participant

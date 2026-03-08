@@ -67,14 +67,15 @@ io.on("connection", (socket) => {
     io.to(to).emit("ice:candidate", { from: socket.id, candidate });
   });
 
-  // Handle chat messages
+  // Handle chat messages - use server's display name from room:join so chat shows correct sender
   socket.on("chat:message", ({ to, message, timestamp, senderEmail }) => {
     console.log(`Chat message from ${socket.id} to ${to}`);
+    const senderName = socketidToEmailMap.get(socket.id) || senderEmail || "Remote User";
     io.to(to).emit("chat:message", { 
       from: socket.id, 
       message, 
       timestamp,
-      senderEmail 
+      senderEmail: senderName 
     });
   });
 
