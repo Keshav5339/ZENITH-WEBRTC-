@@ -43,8 +43,13 @@ const SettingsContent = () => {
     // Load theme
     const savedTheme = localStorage.getItem("zenith_theme");
     if (savedTheme) {
-      setIsDarkMode(savedTheme === "dark");
+      const isDark = savedTheme === "dark";
+      setIsDarkMode(isDark);
       setAppearance(prev => ({ ...prev, theme: savedTheme }));
+      document.documentElement.setAttribute("data-theme", savedTheme);
+    } else {
+      // Ensure a default theme attribute is set
+      document.documentElement.setAttribute("data-theme", appearance.theme);
     }
 
     // Load profile
@@ -115,13 +120,8 @@ const SettingsContent = () => {
   const handleThemeChange = (theme) => {
     setAppearance(prev => ({ ...prev, theme }));
     setIsDarkMode(theme === "dark");
-    
-    // Apply theme globally
-    if (theme === "dark") {
-      document.documentElement.classList.remove("light-mode");
-    } else {
-      document.documentElement.classList.add("light-mode");
-    }
+    // Apply theme globally via data-theme attribute for CSS tokens
+    document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("zenith_theme", theme);
   };
 

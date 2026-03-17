@@ -22,17 +22,19 @@ const Dashboard = () => {
   useEffect(() => {
     const savedTheme = localStorage.getItem("zenith_theme");
     if (savedTheme) {
-      setIsDarkMode(savedTheme === "dark");
+      const isDark = savedTheme === "dark";
+      setIsDarkMode(isDark);
+      document.documentElement.setAttribute("data-theme", savedTheme);
+    } else {
+      // Ensure a default theme attribute is set
+      document.documentElement.setAttribute("data-theme", isDarkMode ? "dark" : "light");
     }
   }, []);
 
   // Apply theme
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.remove("light-mode");
-    } else {
-      document.documentElement.classList.add("light-mode");
-    }
+    const theme = isDarkMode ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("zenith_theme", isDarkMode ? "dark" : "light");
   }, [isDarkMode]);
 
