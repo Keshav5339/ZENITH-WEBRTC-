@@ -4,21 +4,25 @@ import { io } from "socket.io-client";
 const SocketContext = createContext(null);
 
 export const useSocket = () => {
-  const socket = useContext(SocketContext);
-  return socket;
+  return useContext(SocketContext);
 };
 
 export const SocketProvider = (props) => {
   const socket = useMemo(() => {
-    // Use environment variable for socket URL
-    // In production, set REACT_APP_SOCKET_URL in your environment
-    const socketUrl = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
-    
+    // Use environment variable for production
+    const socketUrl =
+      process.env.REACT_APP_SOCKET_URL || "http://localhost:8000";
+
+    // Debug log (very useful for checking URL)
+    console.log("Socket connecting to:", socketUrl);
+
     return io(socketUrl, {
+      transports: ["websocket"],       // ensures stable connection in production
+      withCredentials: true,
       reconnection: true,
+      reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
     });
   }, []);
 
